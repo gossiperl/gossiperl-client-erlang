@@ -51,12 +51,14 @@ stop(_State) ->
   noreply.
 
 connect_to() ->
+  { ok, ListenerPid } = test_listener:start_link(),
   ConnectReponse = gossiperl_client_sup:connect(
     ?OVERLAY_NAME,
     ?CLIENT_PORT,
     ?OVERLAY_PORT,
     ?CLIENT_NAME, ?CLIENT_SECRET,
-    ?ENCRYPTION_KEYS),
+    ?ENCRYPTION_KEYS,
+    ListenerPid ),
   ?assertMatch({ok, _}, ConnectReponse),
   timer:sleep(3000),
   ?assertMatch(operational, gossiperl_client_sup:check_state(?OVERLAY_NAME)),
@@ -67,7 +69,7 @@ subscribe_to() ->
     ?OVERLAY_NAME,
     ?SUBSCRIPTIONS ),
   ?assertMatch({ok, ?SUBSCRIPTIONS}, SubscribeReponse),
-  timer:sleep(3000),
+  timer:sleep(1000),
   ?assertMatch(?SUBSCRIPTIONS, gossiperl_client_sup:subscriptions(?OVERLAY_NAME)),
   ok.
 
@@ -76,11 +78,12 @@ unsubscribe_from() ->
     ?OVERLAY_NAME,
     ?SUBSCRIPTIONS ),
   ?assertMatch({ok, ?SUBSCRIPTIONS}, UnsubscribeReponse),
-  timer:sleep(3000),
+  timer:sleep(1000),
   ?assertMatch([], gossiperl_client_sup:subscriptions(?OVERLAY_NAME)),
   ok.
 
 disconnect_from() ->
   DisconnectReponse = gossiperl_client_sup:disconnect( ?OVERLAY_NAME ),
   ?assertMatch(ok, DisconnectReponse),
+  timer:sleep(3000),
   ok.
