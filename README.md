@@ -2,6 +2,104 @@
 
 This is a **very early** version of the Erlang [gossiperl](https://github.com/radekg/gossiperl) client library.
 
+## Installation
+
+Add this to `rebar.config` file:
+
+    {gossiperl_client, ".*",
+      {git, "https://github.com/radekg/gossiperl-client-erlang.git", "master"}},
+
+Run `rebar get-deps`, the application should be installed.
+
+## Running
+
+    application:start(asn1)
+    application:start(crypto),
+    application:start(public_key),
+    application:start(jsx),
+    application:start(thrift),
+    application:start(quickrand),
+    application:start(uuid),
+    application:start(lager),
+    lager:start(),
+    application:start(gossiperl_client).
+
+## Connecting to an overlay
+
+To connect a client to an overlay:
+
+    gossiperl_client_sup:connect( <<"overlay-name">>,
+                                  ClientPort,
+                                  OverlayPort,
+                                  <<"client-name">>,
+                                  <<"client-secret">>,
+                                  { <<"symmetric-key">>, <<"iv">> } ).
+
+or with a listener:
+
+    gossiperl_client_sup:connect( <<"overlay-name">>,
+                                  ClientPort,
+                                  OverlayPort,
+                                  <<"client-name">>,
+                                  <<"client-secret">>,
+                                  { <<"symmetric-key">>, <<"iv">> },
+                                  ListenerPid ).
+
+A client may be connected to multiple overlays.
+
+## Subscribing / unsubscribing
+
+Subscribing:
+
+    gossiperl_client_sup:subscribe( <<"overlay-name">>,
+                                    [ event, event ] ).
+
+Unsubscribing:
+
+    gossiperl_client_sup:unsubscribe( <<"overlay-name">>,
+                                      [ event, event ] ).
+
+## Disconnecting from an overlay
+
+    gossiperl_client_sup:disconnect( <<"overlay-name">> ).
+
+This will attempt a graceful exit from an overlay.
+
+## Additional operations
+
+### Checking current client state
+
+    gossiperl_client_sup:check_state( <<"overlay-name">> ).
+
+### Getting the list of current subscriptions
+
+    gossiperl_client_sup:subscriptions( <<"overlay-name">> ).
+
+## Receiving notifications
+
+To receive notifications a connection with the ListenerPid needs to be started. An example is provided with unit tests, in `test/test_listener.erl` file.
+
+## Sending arbitrary digests
+
+    gossiperl_client_sup:send( <<"overlay-name">>, DigestType, DigestData ).
+
+where
+
+- `DigestType` is a digest type atom, other than one of the internally recognised digest types
+- `DigestData` is a structure describing Thrift packet, values, types and positions
+
+### Thrift packet structures
+
+An example of a structure describing a simple packet with 2 properties:
+
+- `some_data` of type `string`
+- `some_port_number` of type `integer`
+
+    DigestInfo = [ { some_data, <<"some data to send">>, string, 1 },
+                   { some_port_number, 1234, i32, 2 } ].
+
+Each item of the list maps to: `{ field_name, value_to_send, data_type, order }`. Available types can be found in the excellent [Thrift: The Missing Guide](http://diwakergupta.github.io/thrift-missing-guide/#_types) document.
+
 ## Running tests
 
     ./rebar clean get-deps compile eunit
