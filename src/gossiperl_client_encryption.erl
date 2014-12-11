@@ -20,35 +20,63 @@
 
 -module(gossiperl_client_encryption).
 
--export([maybe_encrypt/2, maybe_decrypt/2]).
+-behaviour(gen_server).
+
+-export([start_link/1, stop/0]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
 
 -include("records.hrl").
 
-maybe_encrypt(Msg, Config) ->
-  case Config#clientConfig.symmetric_key of
-    undefined ->
-      Msg;
-    _ ->
-      crypto:block_encrypt(
-        aes_cbc256,
-        Config#clientConfig.symmetric_key,
-        Config#clientConfig.iv,
-        ?AES_PAD( Msg ) )
-  end.
+%% @doc Starts encryption module.
+start_link(Config) ->
+  gen_server:start_link({local, ?ENCRYPTION(Config)}, ?MODULE, [Config], []).
 
-maybe_decrypt(Msg, Config) ->
+%% @doc Stops encryption module.
+stop() -> gen_server:cast(?MODULE, stop).
+
+%% @doc Initializes encryption module.
+-spec init( [ client_config() ] ) -> { ok, { encryption, client_config() } }.
+init([Config]) ->
+  {ok, {encryption, Config}}.
+
+%% @doc Encrypt Msg and deliver to a caller.
+handle_call({ maybe_encrypt, Msg }, From, { encryption, Config }) when is_binary(Msg) ->
   case Config#clientConfig.symmetric_key of
     undefined ->
-      Msg;
+      gen_server:reply(From, { ok, Msg });
+    _ ->
+      gen_server:reply(From, { ok, crypto:block_encrypt( aes_cbc256,
+                                                         Config#clientConfig.symmetric_key,
+                                                         Config#clientConfig.iv,
+                                                         ?AES_PAD( Msg ) ) } )
+  end,
+  {noreply, {encryption, Config}};
+
+%% @doc Decncrypt Msg and deliver to a caller.
+handle_call({ maybe_decrypt, Msg }, From, { encryption, Config }) when is_binary(Msg) ->
+  case Config#clientConfig.symmetric_key of
+    undefined ->
+      gen_server:reply(From, { ok, Msg });
     _ ->
       try
-        crypto:block_decrypt(
-          aes_cbc256,
-          Config#clientConfig.symmetric_key,
-          Config#clientConfig.iv,
-          Msg )
+        gen_server:reply(From, { ok, crypto:block_decrypt( aes_cbc256,
+                                                           Config#clientConfig.symmetric_key,
+                                                           Config#clientConfig.iv,
+                                                           Msg ) } )
       catch
-        _Error:_Reason ->
-          {error, decryption_failed}
+        _Error:Reason -> gen_server:reply(From, {error, { decryption_failed, Reason }} )
       end
-  end.
+  end,
+  {noreply, {encryption, Config}}.
+
+handle_cast(stop, LoopData) ->
+  {stop, normal, LoopData}.
+
+handle_info(_, LoopData) ->
+  {noreply, LoopData}.
+
+code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.
+
+terminate(_Reason, _LoopData) ->
+  {ok}.

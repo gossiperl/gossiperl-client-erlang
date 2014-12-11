@@ -26,25 +26,13 @@
 
 -include("records.hrl").
 
+%% @doc Start an overlay supervisor.
 start_link(Config) ->
   supervisor:start_link({local, ?CLIENT(Config)}, ?MODULE, [Config]).
 
+%% @doc Initialize an overlay supervisor.
 init([Config]) ->
   {ok, {{one_for_all, 10, 10}, [
-    {
-      ?FSM(Config),
-      {gossiperl_client_fsm, start_link, [ Config ]},
-      permanent,
-      brutal_kill,
-      worker,
-      []
-    },
-    {
-      ?MESSAGING(Config),
-      { gossiperl_client_messaging, start_link, [ Config ]},
-      permanent,
-      brutal_kill,
-      supervisor,
-      []
-    }
-  ]}}.
+    ?MEMBER( ?ENCRYPTION(Config), gossiperl_client_encryption, Config ),
+    ?MEMBER( ?MESSAGING(Config), gossiperl_client_messaging, Config ),
+    ?MEMBER( ?FSM(Config), gossiperl_client_fsm, Config ) ]}}.

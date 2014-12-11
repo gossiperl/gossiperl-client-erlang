@@ -24,8 +24,10 @@
 
 -export([start/2, stop/1]).
 
+%% @doc Starts gossiperl_client application.
 start(_Type, _Args) ->
   gossiperl_client_sup:start_link().
 
+%% @doc Stops gossiperl_client application.
 stop(_State) ->
   ok.

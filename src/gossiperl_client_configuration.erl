@@ -24,8 +24,17 @@
 
 -export([configure/7, client_socket/2, for_overlay/1, remove_configuration/1]).
 
+%% @doc Prepare configuration from given details.
+-spec configure( binary(), non_neg_integer(),
+                 non_neg_integer(), binary(), binary(),
+                 encryption_data(), listener() ) -> { ok, client_config() }.
 configure( OverlayName, Port, OverlayPort, Name, Secret, { SymmetricKey, IV }, Listener )
-  when is_pid(Listener) orelse Listener =:= undefined ->
+  when ( is_pid(Listener) orelse Listener =:= undefined ) andalso is_integer(Port)
+                                                          andalso is_integer(OverlayPort)
+                                                          andalso is_binary(Name)
+                                                          andalso is_binary(Secret)
+                                                          andalso is_binary(SymmetricKey)
+                                                          andalso is_binary(IV) ->
   PreparedConfig = #clientConfig{
     overlay = OverlayName,
     port = Port,
@@ -35,21 +44,31 @@ configure( OverlayName, Port, OverlayPort, Name, Secret, { SymmetricKey, IV }, L
     symmetric_key = SymmetricKey,
     iv = IV,
     names = #clientNames{
-      client    = list_to_atom(binary_to_list(<<"client_", OverlayName/binary>>)),
-      fsm       = list_to_atom(binary_to_list(<<"fsm_", OverlayName/binary>>)),
-      messaging = list_to_atom(binary_to_list(<<"messaging_", OverlayName/binary>>)) },
+      client     = list_to_atom(binary_to_list(<<"client_", OverlayName/binary>>)),
+      fsm        = list_to_atom(binary_to_list(<<"fsm_", OverlayName/binary>>)),
+      messaging  = list_to_atom(binary_to_list(<<"messaging_", OverlayName/binary>>)),
+      encryption = list_to_atom(binary_to_list(<<"encryption_", OverlayName/binary>>)) },
     listener = Listener },
   { ok, store_config( PreparedConfig ) }.
 
+%% @doc Store UDP socket on the configuration.
+-spec client_socket( port(), client_config() ) -> client_config().
 client_socket(Socket, Config) ->
   PreparedConfig = Config#clientConfig{ socket = Socket },
   store_config( PreparedConfig ),
   PreparedConfig.
 
+%% @doc Store configuration in ETS.
+-spec store_config( client_config() ) -> client_config().
 store_config(Config) ->
   ets:insert(?CONFIG_ETS, { Config#clientConfig.overlay, Config }),
   Config.
 
+%% @doc Get configuration for an overlay.
+-spec for_overlay
+      ( atom() ) -> { ok, client_config() } | { error, no_config };
+      ( list() ) -> { ok, client_config() } | { error, no_config };
+      ( binary() ) -> { ok, client_config() } | { error, no_config }.
 for_overlay(OverlayName) when is_atom(OverlayName) ->
   for_overlay( atom_to_list( OverlayName ) );
 for_overlay(OverlayName) when is_list(OverlayName) ->
@@ -60,5 +79,7 @@ for_overlay(OverlayName) when is_binary(OverlayName) ->
     []         -> { error, no_config }
   end.
 
+%% @doc Remove overlay configuration.
+-spec remove_configuration( client_config() ) -> true.
 remove_configuration(Config) ->
   ets:delete(?CONFIG_ETS, Config#clientConfig.overlay).

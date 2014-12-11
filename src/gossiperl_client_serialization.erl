@@ -20,7 +20,10 @@
 
 -module(gossiperl_client_serialization).
 
--export([encode_message/2, decode_message/1, encode_message/3]).
+-behaviour(gen_server).
+
+-export([start_link/0, stop/0]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
 
 -include("records.hrl").
 
@@ -30,52 +33,80 @@
                          }).
 -record(memory_buffer, {buffer}).
 
-encode_message(DigestType, Digest) ->
-  case DigestType of
-    digestEnvelope ->
-      Digest;
-    _ ->
-      encode_message( DigestType, Digest, gossiperl_types:struct_info(DigestType) )
-  end.
+start_link() ->
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-encode_message(DigestType, Digest, StructInfo) ->
-  digest_to_binary( #digestEnvelope{
-                          payload_type = atom_to_list(DigestType),
-                          bin_payload = digest_to_binary(Digest, StructInfo),
-                          id = uuid:uuid_to_string(uuid:get_v4()) },
-                    gossiperl_types:struct_info(digestEnvelope) ).
+stop() -> gen_server:cast(?MODULE, stop).
 
-decode_message(BinaryDigest) ->
+init([]) ->
+  {ok, OutThriftTransport} = thrift_memory_buffer:new(),
+  {ok, OutThriftProtocol} = thrift_binary_protocol:new(OutThriftTransport),
+  {ok, {serialization, OutThriftProtocol}}.
+
+handle_call({ serialize, DigestType, Digest }, From, { serialization, OutThriftProtocol }) ->
+  gen_server:reply( From, { ok, DigestType, digest_to_binary(
+                                              #digestEnvelope{
+                                                payload_type = atom_to_list(DigestType),
+                                                bin_payload = digest_to_binary( Digest,
+                                                                                gossiperl_types:struct_info(DigestType),
+                                                                                OutThriftProtocol),
+                                                id = uuid:uuid_to_string(uuid:get_v4()) },
+                                                gossiperl_types:struct_info(digestEnvelope),
+                                                OutThriftProtocol ) } ),
+  { noreply, { serialization, OutThriftProtocol } };
+
+handle_call({ serialize, DigestType, Digest, StructInfo, DigestId }, From, { serialization, OutThriftProtocol }) ->
+  gen_server:reply( From, { ok, DigestType, digest_to_binary(
+                                              #digestEnvelope{
+                                                payload_type = atom_to_list(DigestType),
+                                                bin_payload = digest_to_binary( Digest, StructInfo, OutThriftProtocol),
+                                                id = DigestId },
+                                                gossiperl_types:struct_info(digestEnvelope),
+                                                OutThriftProtocol ) } ),
+  { noreply, { serialization, OutThriftProtocol } };
+
+handle_call({ deserialize, BinaryDigest }, From, { serialization, OutThriftProtocol }) ->
   try
     case digest_from_binary(digestEnvelope, BinaryDigest) of
       {ok, DecodedResult} ->
         case digest_type_as_atom(DecodedResult#digestEnvelope.payload_type) of
           { ok, PayloadTypeAtom } ->
             case digest_from_binary(PayloadTypeAtom, DecodedResult#digestEnvelope.bin_payload) of
-              { ok, DecodedResult2 } ->
-                { ok, PayloadTypeAtom, DecodedResult2};
-              _ ->
-                {error, DecodedResult}
+              { ok, DecodedResult2 } -> gen_server:reply(From, { ok, PayloadTypeAtom, DecodedResult2});
+              _                      -> gen_server:reply(From, {error, DecodedResult})
             end;
           { error, UnsupportedPayloadType } ->
-            { forwardable, UnsupportedPayloadType, BinaryDigest, DecodedResult#digestEnvelope.id }
+            gen_server:reply(From, { forwardable, UnsupportedPayloadType, BinaryDigest, DecodedResult#digestEnvelope.id })
         end;
-      _ ->
-        {error, BinaryDigest}
+      _ -> gen_server:reply(From, {error, BinaryDigest})
     end
   catch
-    _:_ -> { error, decode }
-  end.
+    _:Reason -> gen_server:reply(From, { error, { decode, Reason } })
+  end,
+  { noreply, { serialization, OutThriftProtocol } }.
 
-digest_to_binary(Digest, StructInfo) ->
-  {ok, Transport} = thrift_memory_buffer:new(),
-  {ok, Protocol} = thrift_binary_protocol:new(Transport),
-  {PacketThrift, ok} = thrift_protocol:write (Protocol,
-    {{struct, element(2, StructInfo)}, Digest}),
+handle_cast(stop, LoopData) ->
+  {stop, normal, LoopData}.
+
+handle_info(_, LoopData) ->
+  {noreply, LoopData}.
+
+code_change(_OldVsn, State, _Extra) ->
+  {ok, State}.
+
+terminate(_Reason, _LoopData) ->
+  {ok}.
+
+%% @doc Serializes Erlang term to Thrift
+-spec digest_to_binary( term(), term(), term() ) -> binary().
+digest_to_binary(Digest, StructInfo, OutThriftProtocol) ->
+  {PacketThrift, ok} = thrift_protocol:write(OutThriftProtocol, {{struct, element(2, StructInfo)}, Digest}),
   {protocol, _, OutProtocol} = PacketThrift,
   {transport, _, OutTransport} = OutProtocol#binary_protocol.transport,
   iolist_to_binary(OutTransport#memory_buffer.buffer).
 
+%% @doc Deserializes Thrift data to Erlang term.
+-spec digest_from_binary( atom(), binary() ) -> { ok, term() } | { error, not_thrift }.
 digest_from_binary(DigestType, BinaryDigest) ->
   {ok, InTransport} = thrift_memory_buffer:new(BinaryDigest),
   {ok, InProtocol} = thrift_binary_protocol:new(InTransport),
@@ -86,6 +117,8 @@ digest_from_binary(DigestType, BinaryDigest) ->
       {error, not_thrift}
   end.
 
+%% @doc Get digest type as atom. Avoid convertion to atoms using erlang functions.
+-spec digest_type_as_atom( binary() ) -> { ok, atom() } | { error, binary() }.
 digest_type_as_atom(<<"digestError">>)                 -> {ok, digestError};
 digest_type_as_atom(<<"digestForwardedAck">>)          -> {ok, digestForwardedAck};
 digest_type_as_atom(<<"digest">>)                      -> {ok, digest};

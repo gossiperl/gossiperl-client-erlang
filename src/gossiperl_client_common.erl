@@ -20,16 +20,16 @@
 
 -module(gossiperl_client_common).
 
--export([get_timestamp/0, get_timestamp/1, parse_binary_ip/1]).
+-export([get_timestamp/0, get_timestamp/1]).
 
+-include("records.hrl").
+
+%% @doc Get UNIX timestamp.
+-spec get_timestamp() -> integer().
 get_timestamp() ->
   get_timestamp( os:timestamp() ).
 
+%% @doc Get UNIX timestamp from OS timestamp.
+-spec get_timestamp( timestamp() ) -> integer().
 get_timestamp({Mega,Sec,Micro}) ->
   trunc( ((Mega*1000000+Sec)*1000000+Micro) / 1000000 ).
-
-parse_binary_ip(BinaryIp) ->
-  case inet:parse_ipv4_address( binary_to_list( BinaryIp ) ) of
-    { ok, Ip } -> Ip;
-    _          -> { error, { not_ip, BinaryIp } }
-  end.

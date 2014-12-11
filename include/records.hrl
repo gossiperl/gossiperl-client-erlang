@@ -26,7 +26,8 @@
 -record(clientNames, {
           client :: atom(),
           fsm :: atom(),
-          messaging :: atom() }).
+          messaging :: atom(),
+          encryption :: atom() }).
 
 -record(clientConfig, {
           overlay :: atom(),
@@ -40,11 +41,19 @@
           names :: #clientNames{},
           listener :: pid() | atom() }).
 
+-type client_config() :: #clientConfig{}.
+-type listener() :: pid() | undefined.
+-type encryption_data() :: { binary(), binary() }.
+-type timestamp() :: {MegaSecs :: non_neg_integer(), Secs :: non_neg_integer(), MicroSecs :: non_neg_integer()}.
+
 -define(CONFIG_ETS, ets_gossiperl_client_configuration).
 -define(AES_PAD(Bin), <<Bin/binary, 0:(( 32 - ( byte_size(Bin) rem 32 ) ) *8 )>>).
 
 -define(FSM(Config), Config#clientConfig.names#clientNames.fsm).
 -define(CLIENT(Config), Config#clientConfig.names#clientNames.client).
 -define(MESSAGING(Config), Config#clientConfig.names#clientNames.messaging).
+-define(ENCRYPTION(Config), Config#clientConfig.names#clientNames.encryption).
+
+-define(MEMBER( AtomName, Module, Config ), { AtomName, { Module, start_link, [ Config ]}, permanent, brutal_kill, supervisor, [] }).
 
 -endif.
