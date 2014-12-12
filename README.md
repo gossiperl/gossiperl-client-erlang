@@ -17,6 +17,7 @@ Run `rebar get-deps`, the application should be installed.
     application:start(crypto),
     application:start(public_key),
     application:start(jsx),
+    application:start(erlsha2),
     application:start(thrift),
     application:start(quickrand),
     application:start(uuid),

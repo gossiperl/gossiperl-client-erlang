@@ -37,7 +37,7 @@ stop() -> gen_server:cast(?MODULE, stop).
 %% @doc Initializes encryption module.
 -spec init( [ client_config() ] ) -> { ok, { encryption, client_config() } }.
 init([Config]) ->
-  {ok, {encryption, Config}}.
+  {ok, {encryption, Config#clientConfig{ symmetric_key = erlsha2:sha256(Config#clientConfig.symmetric_key) }}}.
 
 %% @doc Encrypt Msg and deliver to a caller.
 handle_call({ maybe_encrypt, Msg }, From, { encryption, Config }) when is_binary(Msg) ->
