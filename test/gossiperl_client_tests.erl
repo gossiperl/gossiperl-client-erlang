@@ -38,7 +38,7 @@ gossiperl_client_test_() ->
     fun disconnect_from/0 ] }.
 
 start() ->
-  Applications = [ asn1, crypto, public_key, jsx, thrift,
+  Applications = [ asn1, crypto, public_key, erlsha2, jsx, thrift,
                    quickrand, uuid, syntax_tools, compiler,
                    goldrush, lager, gossiperl_client ],
   [ begin
