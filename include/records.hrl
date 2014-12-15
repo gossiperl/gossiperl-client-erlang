@@ -35,7 +35,6 @@
           name :: binary(),
           secret :: binary(),
           symmetric_key :: binary(),
-          iv :: binary(),
           overlay_port = 6666 :: integer(),
           socket :: pid(),
           names :: #clientNames{},
@@ -43,7 +42,6 @@
 
 -type client_config() :: #clientConfig{}.
 -type listener() :: pid() | undefined.
--type encryption_data() :: { binary(), binary() }.
 -type timestamp() :: {MegaSecs :: non_neg_integer(), Secs :: non_neg_integer(), MicroSecs :: non_neg_integer()}.
 
 -define(CONFIG_ETS, ets_gossiperl_client_configuration).

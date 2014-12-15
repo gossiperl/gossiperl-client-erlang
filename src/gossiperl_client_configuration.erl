@@ -27,14 +27,13 @@
 %% @doc Prepare configuration from given details.
 -spec configure( binary(), non_neg_integer(),
                  non_neg_integer(), binary(), binary(),
-                 encryption_data(), listener() ) -> { ok, client_config() }.
-configure( OverlayName, Port, OverlayPort, Name, Secret, { SymmetricKey, IV }, Listener )
+                 binary(), listener() ) -> { ok, client_config() }.
+configure( OverlayName, Port, OverlayPort, Name, Secret, SymmetricKey, Listener )
   when ( is_pid(Listener) orelse Listener =:= undefined ) andalso is_integer(Port)
                                                           andalso is_integer(OverlayPort)
                                                           andalso is_binary(Name)
                                                           andalso is_binary(Secret)
-                                                          andalso is_binary(SymmetricKey)
-                                                          andalso is_binary(IV) ->
+                                                          andalso is_binary(SymmetricKey) ->
   PreparedConfig = #clientConfig{
     overlay = OverlayName,
     port = Port,
@@ -42,7 +41,6 @@ configure( OverlayName, Port, OverlayPort, Name, Secret, { SymmetricKey, IV }, L
     name = Name,
     secret = Secret,
     symmetric_key = SymmetricKey,
-    iv = IV,
     names = #clientNames{
       client     = list_to_atom(binary_to_list(<<"client_", OverlayName/binary>>)),
       fsm        = list_to_atom(binary_to_list(<<"fsm_", OverlayName/binary>>)),

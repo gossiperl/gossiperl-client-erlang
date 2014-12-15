@@ -26,7 +26,7 @@
 -define(OVERLAY_PORT, 6666).
 -define(CLIENT_NAME, <<"client-test">>).
 -define(CLIENT_SECRET, <<"client-test">>).
--define(ENCRYPTION_KEYS, { <<"v3JElaRswYgxOt4b">>, <<"wEKzHIGQDTdLknUE">> }).
+-define(SYMMETRIC_KEY, <<"v3JElaRswYgxOt4b">>).
 
 -define(SUBSCRIPTIONS, [member_in, member_out]).
 
@@ -57,7 +57,7 @@ connect_to() ->
     ?CLIENT_PORT,
     ?OVERLAY_PORT,
     ?CLIENT_NAME, ?CLIENT_SECRET,
-    ?ENCRYPTION_KEYS,
+    ?SYMMETRIC_KEY,
     ListenerPid ),
   ?assertMatch({ok, _}, ConnectReponse),
   timer:sleep(3000),

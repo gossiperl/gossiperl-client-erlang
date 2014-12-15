@@ -34,7 +34,7 @@ To connect a client to an overlay:
                                   OverlayPort,
                                   <<"client-name">>,
                                   <<"client-secret">>,
-                                  { <<"symmetric-key">>, <<"iv">> } ).
+                                  <<"symmetric-key">> ).
 
 or with a listener:
 
@@ -43,7 +43,7 @@ or with a listener:
                                   OverlayPort,
                                   <<"client-name">>,
                                   <<"client-secret">>,
-                                  { <<"symmetric-key">>, <<"iv">> },
+                                  <<"symmetric-key">>,
                                   ListenerPid ).
 
 A client may be connected to multiple overlays.

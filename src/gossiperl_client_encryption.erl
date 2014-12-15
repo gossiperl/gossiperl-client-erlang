@@ -45,10 +45,11 @@ handle_call({ maybe_encrypt, Msg }, From, { encryption, Config }) when is_binary
     undefined ->
       gen_server:reply(From, { ok, Msg });
     _ ->
+      IV = crypto:next_iv( aes_cbc, Msg ),
       gen_server:reply(From, { ok, crypto:block_encrypt( aes_cbc256,
                                                          Config#clientConfig.symmetric_key,
-                                                         Config#clientConfig.iv,
-                                                         ?AES_PAD( Msg ) ) } )
+                                                         IV,
+                                                         <<IV/binary, (?AES_PAD( Msg ))/binary>> ) } )
   end,
   {noreply, {encryption, Config}};
 
@@ -59,10 +60,11 @@ handle_call({ maybe_decrypt, Msg }, From, { encryption, Config }) when is_binary
       gen_server:reply(From, { ok, Msg });
     _ ->
       try
+        <<IV:16/binary, Cipher/binary>> = Msg,
         gen_server:reply(From, { ok, crypto:block_decrypt( aes_cbc256,
                                                            Config#clientConfig.symmetric_key,
-                                                           Config#clientConfig.iv,
-                                                           Msg ) } )
+                                                           IV,
+                                                           Cipher ) } )
       catch
         _Error:Reason -> gen_server:reply(From, {error, { decryption_failed, Reason }} )
       end
