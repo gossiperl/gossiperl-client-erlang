@@ -47,9 +47,9 @@ handle_call({ serialize, DigestType, Digest }, From, { serialization, OutThriftP
   gen_server:reply( From, { ok, DigestType, digest_to_binary(
                                               #digestEnvelope{
                                                 payload_type = atom_to_list(DigestType),
-                                                bin_payload = digest_to_binary( Digest,
+                                                bin_payload = base64:encode(digest_to_binary( Digest,
                                                                                 gossiperl_types:struct_info(DigestType),
-                                                                                OutThriftProtocol),
+                                                                                OutThriftProtocol)),
                                                 id = uuid:uuid_to_string(uuid:get_v4()) },
                                                 gossiperl_types:struct_info(digestEnvelope),
                                                 OutThriftProtocol ) } ),
@@ -59,7 +59,7 @@ handle_call({ serialize, DigestType, Digest, StructInfo, DigestId }, From, { ser
   gen_server:reply( From, { ok, DigestType, digest_to_binary(
                                               #digestEnvelope{
                                                 payload_type = atom_to_list(DigestType),
-                                                bin_payload = digest_to_binary( Digest, StructInfo, OutThriftProtocol),
+                                                bin_payload = base64:encode(digest_to_binary( Digest, StructInfo, OutThriftProtocol)),
                                                 id = DigestId },
                                                 gossiperl_types:struct_info(digestEnvelope),
                                                 OutThriftProtocol ) } ),
@@ -71,9 +71,9 @@ handle_call({ deserialize, BinaryDigest }, From, { serialization, OutThriftProto
       {ok, DecodedResult} ->
         case digest_type_as_atom(DecodedResult#digestEnvelope.payload_type) of
           { ok, PayloadTypeAtom } ->
-            case digest_from_binary(PayloadTypeAtom, DecodedResult#digestEnvelope.bin_payload) of
-              { ok, DecodedResult2 } -> gen_server:reply(From, { ok, PayloadTypeAtom, DecodedResult2});
-              _                      -> gen_server:reply(From, {error, DecodedResult})
+            case digest_from_binary(PayloadTypeAtom, base64:decode(DecodedResult#digestEnvelope.bin_payload)) of
+              { ok, DecodedResult2 } -> gen_server:reply(From, { ok, PayloadTypeAtom, DecodedResult2 });
+              _                      -> gen_server:reply(From, { error, DecodedResult })
             end;
           { error, UnsupportedPayloadType } ->
             gen_server:reply(From, { forwardable, UnsupportedPayloadType, BinaryDigest, DecodedResult#digestEnvelope.id })
