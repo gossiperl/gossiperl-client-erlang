@@ -38,7 +38,10 @@ stop() -> gen_server:cast(?MODULE, stop).
 -spec init( [ client_config() ] ) -> { ok, { messaging, client_config() } } | { error, term() }.
 init([Config]) ->
   gossiperl_client_log:info("[~p] Attempting to start a client server at ~p.", [Config#clientConfig.name, Config#clientConfig.port]),
-  case gen_udp:open(Config#clientConfig.port, [binary, {ip, {127,0,0,1}}]) of
+  case gen_udp:open(Config#clientConfig.port, [ binary,
+                                                {ip, {127,0,0,1}},
+                                                {recbuf, Config#clientConfig.thrift_window_size},
+                                                {sndbuf, Config#clientConfig.thrift_window_size} ]) of
     {ok, Socket} ->
       gossiperl_client_log:info("[~p] Client server listening with config ~p.", [Config#clientConfig.name, Config]),
       {ok, {messaging, gossiperl_client_configuration:client_socket( Socket, Config ) }};
