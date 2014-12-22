@@ -38,9 +38,11 @@
           overlay_port = 6666 :: integer(),
           socket :: pid(),
           names :: #clientNames{},
-          listener :: pid() | atom() }).
+          listener :: pid() }).
 
 -type client_config() :: #clientConfig{}.
+-type configuration_option() :: overlay_name | overlay_port | client_name | client_port | client_secret | symmetric_key | listener.
+-type configuration_validation_error() :: option_missing | needs_binary | needs_integer.
 -type listener() :: pid() | undefined.
 -type timestamp() :: {MegaSecs :: non_neg_integer(), Secs :: non_neg_integer(), MicroSecs :: non_neg_integer()}.
 
