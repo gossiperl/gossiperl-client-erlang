@@ -23,8 +23,7 @@
 -behaviour(supervisor).
 
 -export([start_link/0, init/1]).
--export([ connect/6,
-          connect/7,
+-export([ connect/1,
           disconnect/1,
           check_state/1,
           subscriptions/1,
@@ -51,27 +50,10 @@ init([]) ->
 
 %% CONNECTIVITY
 
-%% @doc Connect to an overlay without listener.
--spec connect( binary(), non_neg_integer(), non_neg_integer(),
-               binary(), binary(), binary() ) -> { ok, pid() } | { error, term() }.
-connect(OverlayName, Port, OverlayPort, Name, Secret, SymmetricKey)
-  when is_integer(Port)
-       andalso is_integer(OverlayPort)
-       andalso is_binary(Name)
-       andalso is_binary(Secret)
-       andalso is_binary(SymmetricKey) ->
-  connect(OverlayName, Port, OverlayPort, Name, Secret, SymmetricKey, undefined).
-
 %% @doc Connect to an overlay with listener.
--spec connect( binary(), non_neg_integer(), non_neg_integer(),
-               binary(), binary(), binary(), listener() ) -> { ok, pid() } | { error, term() }.
-connect(OverlayName, Port, OverlayPort, Name, Secret, SymmetricKey, Listener)
-  when ( is_pid(Listener) orelse Listener =:= undefined ) andalso is_integer(Port)
-                                                          andalso is_integer(OverlayPort)
-                                                          andalso is_binary(Name)
-                                                          andalso is_binary(Secret)
-                                                          andalso is_binary(SymmetricKey) ->
-  case gossiperl_client_configuration:configure( OverlayName, Port, OverlayPort, Name, Secret, SymmetricKey, Listener) of
+-spec connect( [ { configuration_option(), term() } ] ) -> { ok, pid() } | { error, term() }.
+connect( Options ) when is_list( Options ) ->
+  case gossiperl_client_configuration:configure( Options ) of
     { ok, PreparedConfig } ->
       supervisor:start_child(?MODULE, {
         ?CLIENT(PreparedConfig),

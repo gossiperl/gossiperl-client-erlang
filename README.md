@@ -29,22 +29,16 @@ Run `rebar get-deps`, the application should be installed.
 
 To connect a client to an overlay:
 
-    gossiperl_client_sup:connect( <<"overlay-name">>,
-                                  ClientPort,
-                                  OverlayPort,
-                                  <<"client-name">>,
-                                  <<"client-secret">>,
-                                  <<"symmetric-key">> ).
+    gossiperl_client_sup:connect( [
+              { overlay_name, <<"overlay-name">> },
+              { overlay_port, OverlayPort },
+              { client_name, <<"client-name">> },
+              { client_port, ClientPort },
+              { client_secret, <<"client-secret">> },
+              { symmetric_key, <<"symmetric-key">> },
+              { listener, ListenerPid } ] ).
 
-or with a listener:
-
-    gossiperl_client_sup:connect( <<"overlay-name">>,
-                                  ClientPort,
-                                  OverlayPort,
-                                  <<"client-name">>,
-                                  <<"client-secret">>,
-                                  <<"symmetric-key">>,
-                                  ListenerPid ).
+`listener` option is optional.
 
 A client may be connected to multiple overlays.
 

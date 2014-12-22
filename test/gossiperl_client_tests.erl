@@ -52,13 +52,14 @@ stop(_State) ->
 
 connect_to() ->
   { ok, ListenerPid } = test_listener:start_link(),
-  ConnectReponse = gossiperl_client_sup:connect(
-    ?OVERLAY_NAME,
-    ?CLIENT_PORT,
-    ?OVERLAY_PORT,
-    ?CLIENT_NAME, ?CLIENT_SECRET,
-    ?SYMMETRIC_KEY,
-    ListenerPid ),
+  ConnectReponse = gossiperl_client_sup:connect([
+      { overlay_name, ?OVERLAY_NAME },
+      { overlay_port, ?OVERLAY_PORT },
+      { client_name, ?CLIENT_NAME },
+      { client_secret, ?CLIENT_SECRET },
+      { client_port, ?CLIENT_PORT },
+      { symmetric_key, ?SYMMETRIC_KEY },
+      { listener, ListenerPid } ]),
   ?assertMatch({ok, _}, ConnectReponse),
   timer:sleep(3000),
   ?assertMatch(operational, gossiperl_client_sup:check_state(?OVERLAY_NAME)),

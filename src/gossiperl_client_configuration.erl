@@ -22,32 +22,54 @@
 
 -include("records.hrl").
 
--export([configure/7, client_socket/2, for_overlay/1, remove_configuration/1]).
+-export([configure/1, client_socket/2, for_overlay/1, remove_configuration/1]).
 
 %% @doc Prepare configuration from given details.
--spec configure( binary(), non_neg_integer(),
-                 non_neg_integer(), binary(), binary(),
-                 binary(), listener() ) -> { ok, client_config() }.
-configure( OverlayName, Port, OverlayPort, Name, Secret, SymmetricKey, Listener )
-  when ( is_pid(Listener) orelse Listener =:= undefined ) andalso is_integer(Port)
-                                                          andalso is_integer(OverlayPort)
-                                                          andalso is_binary(Name)
-                                                          andalso is_binary(Secret)
-                                                          andalso is_binary(SymmetricKey) ->
-  PreparedConfig = #clientConfig{
-    overlay = OverlayName,
-    port = Port,
-    overlay_port = OverlayPort,
-    name = Name,
-    secret = Secret,
-    symmetric_key = SymmetricKey,
-    names = #clientNames{
-      client     = list_to_atom(binary_to_list(<<"client_", OverlayName/binary>>)),
-      fsm        = list_to_atom(binary_to_list(<<"fsm_", OverlayName/binary>>)),
-      messaging  = list_to_atom(binary_to_list(<<"messaging_", OverlayName/binary>>)),
-      encryption = list_to_atom(binary_to_list(<<"encryption_", OverlayName/binary>>)) },
-    listener = Listener },
-  { ok, store_config( PreparedConfig ) }.
+-spec configure( [ { configuration_option(), term() } ] ) -> { ok, client_config() } | { error, { configuration_validation_error(), term() } }.
+configure( Options ) when is_list( Options ) ->
+  case validate_required( Options ) of
+    ok ->
+      { overlay_name, OverlayName } = lists:keyfind( overlay_name, 1, Options ),
+      { overlay_port, OverlayPort } = lists:keyfind( overlay_port, 1, Options ),
+      { client_name, ClientName } = lists:keyfind( client_name, 1, Options ),
+      { client_port, ClientPort } = lists:keyfind( client_port, 1, Options ),
+      { client_secret, ClientSecret } = lists:keyfind( client_secret, 1, Options ),
+      { symmetric_key, SymmetricKey } = lists:keyfind( symmetric_key, 1, Options ),
+      BinaryOptions = [
+        { overlay_name, OverlayName },
+        { client_name, ClientName },
+        { client_secret, ClientSecret },
+        { symmetric_key, SymmetricKey } ],
+      IntegerOptions = [
+        { overlay_port, OverlayPort },
+        { client_port, ClientPort } ],
+      case validate_binary( BinaryOptions ) of
+        ok ->
+          case validate_integer( IntegerOptions ) of
+            ok ->
+              PreparedConfig = #clientConfig{
+                overlay = OverlayName,
+                port = ClientPort,
+                overlay_port = OverlayPort,
+                name = ClientName,
+                secret = ClientSecret,
+                symmetric_key = SymmetricKey,
+                names = #clientNames{
+                  client     = list_to_atom(binary_to_list(<<"client_", OverlayName/binary>>)),
+                  fsm        = list_to_atom(binary_to_list(<<"fsm_", OverlayName/binary>>)),
+                  messaging  = list_to_atom(binary_to_list(<<"messaging_", OverlayName/binary>>)),
+                  encryption = list_to_atom(binary_to_list(<<"encryption_", OverlayName/binary>>)) },
+                listener = get_option_with_default( listener, Options, undefined ) },
+              { ok, store_config( PreparedConfig ) };
+            { error, { needs_integer, Option } } ->
+              { error, { needs_integer, Option } }
+          end;
+        { error, { needs_binary, Option } } ->
+          { error, { needs_binary, Option } }
+      end;
+    { error, { option_missing, Option } } ->
+      { error, { option_missing, Option } }
+  end.
 
 %% @doc Store UDP socket on the configuration.
 -spec client_socket( port(), client_config() ) -> client_config().
@@ -81,3 +103,71 @@ for_overlay(OverlayName) when is_binary(OverlayName) ->
 -spec remove_configuration( client_config() ) -> true.
 remove_configuration(Config) ->
   ets:delete(?CONFIG_ETS, Config#clientConfig.overlay).
+
+%% @doc Validates configuration options, checks for required options.
+-spec validate_required( [ { configuration_option(), term() } ] ) -> ok | { error, { configuration_validation_error(), atom() } }.
+validate_required( Options ) when is_list(Options) ->
+  RequiredOptions = [ overlay_name, overlay_port, client_name, client_secret, client_port, symmetric_key ],
+  % check if all required options are here:
+  lists:foldl(fun(RequiredOption, FoldResult) ->
+    case FoldResult of
+      ok ->
+        case lists:keyfind( RequiredOption, 1, Options ) of
+          false ->
+            { error, { option_missing, RequiredOption } };
+          _ ->
+            ok
+        end;
+      { error, Reason } ->
+        { error, Reason }
+    end
+  end, ok, RequiredOptions).
+
+%% @doc Validates configuration options, check if option value is binary.
+-spec validate_binary( [ term() ] ) -> ok | { error, { configuration_validation_error(), atom() } }.
+validate_binary( Options ) when is_list(Options) ->
+  % check if all required options are here:
+  lists:foldl(fun({ OptionName, Value }, FoldResult) ->
+    case FoldResult of
+      ok ->
+        case is_binary(Value) of
+          false ->
+            { error, { needs_binary, OptionName } };
+          _ ->
+            ok
+        end;
+      { error, Reason } ->
+        { error, Reason }
+    end
+  end, ok, Options).
+
+%% @doc Validates configuration options, check if option value is integer.
+-spec validate_integer( [ term() ] ) -> ok | { error, { configuration_validation_error(), atom() } }.
+validate_integer( Options ) when is_list(Options) ->
+  % check if all required options are here:
+  lists:foldl(fun({ OptionName, Value }, FoldResult) ->
+    case FoldResult of
+      ok ->
+        case is_integer(Value) of
+          false ->
+            { error, { needs_integer, OptionName } };
+          _ ->
+            ok
+        end;
+      { error, Reason } ->
+        { error, Reason }
+    end
+  end, ok, Options).
+
+get_option_with_default(listener, Options, Default) ->
+  case lists:keyfind(listener, 1, Options) of
+    false ->
+      Default;
+    { listener, Value } ->
+      case is_pid(Value) of
+        true ->
+          Value;
+        false ->
+          Default
+      end
+  end.
