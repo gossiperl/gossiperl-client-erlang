@@ -31,14 +31,15 @@
 
 -record(clientConfig, {
           overlay :: atom(),
-          port = 41000 :: integer(),
+          port :: integer(),
           name :: binary(),
           secret :: binary(),
           symmetric_key :: binary(),
-          overlay_port = 6666 :: integer(),
+          overlay_port :: integer(),
           socket :: pid(),
           names :: #clientNames{},
-          listener :: pid() }).
+          listener :: pid(),
+          thrift_window_size :: integer() }).
 
 -type client_config() :: #clientConfig{}.
 -type configuration_option() :: overlay_name | overlay_port | client_name | client_port | client_secret | symmetric_key | listener.
