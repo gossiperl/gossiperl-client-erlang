@@ -90,10 +90,33 @@ An example of a structure describing a simple packet with 2 properties:
 - `some_data` of type `string`
 - `some_port_number` of type `integer`
 
-    DigestInfo = [ { some_data, <<"some data to send">>, string, 1 },
+    DigestData = [ { some_data, <<"some data to send">>, string, 1 },
                    { some_port_number, 1234, i32, 2 } ].
 
-Each item of the list maps to: `{ field_name, value_to_send, data_type, order }`. Available types can be found in the excellent [Thrift: The Missing Guide](http://diwakergupta.github.io/thrift-missing-guide/#_types) document.
+Each item of the list maps to: `{ field_name, value_to_send, data_type, order }`. Supported Thrift types:
+
+- `bool`
+- `byte`
+- `double`
+- `i16`
+- `i32`
+- `i64`
+- `string`
+
+### Reading custom digests
+
+Once a forwarded message is recieved, it can be read in the following manner (assuming the message presented in the above `DigestData`):
+
+    gossiperl_client_sup:read( DigestType, BinaryEnvelope, DigestInfo ).
+
+Where:
+
+- `DigestType` is an atom representing expected digest type
+- `BinaryEnvelope` and envelope received as forwarded message
+- `DigestInfo` is a Thrift data structure, example below
+
+    DigestInfo = [ { 1, string },
+                   { 2, i32 } ].
 
 ## Running tests
 

@@ -35,7 +35,8 @@ gossiperl_client_test_() ->
     fun connect_to/0,
     fun subscribe_to/0,
     fun unsubscribe_from/0,
-    fun disconnect_from/0 ] }.
+    fun disconnect_from/0,
+    fun custom_serialization/0 ] }.
 
 start() ->
   Applications = [ asn1, crypto, public_key, erlsha2, jsx, thrift,
@@ -87,4 +88,28 @@ disconnect_from() ->
   DisconnectReponse = gossiperl_client_sup:disconnect( ?OVERLAY_NAME ),
   ?assertMatch(ok, DisconnectReponse),
   timer:sleep(3000),
+  ok.
+
+custom_serialization() ->
+  DigestType = someCustomDigest,
+  DigestData = [
+    { some_data, <<"some data to send">>, string, 1 },
+    { some_port_number, 1234, i32, 2 } ],
+  DigestId = <<"some-digest-id">>,
+  DigestInfo = [
+    { 1, string },
+    { 2, i32 } ],
+  
+  % serialize:
+  SerializaeResult = gen_server:call( gossiperl_client_serialization, { serialize, DigestType, DigestData, DigestId } ),
+  ?assertMatch( { ok, DigestType, _ }, SerializaeResult ),
+  { ok, DigestType, BinaryEnvelope } = SerializaeResult,
+  ?assert( is_binary( BinaryEnvelope ) =:= true ),
+
+  %deserialize:
+  DeserializedResult = gen_server:call( gossiperl_client_serialization, { deserialize, DigestType, BinaryEnvelope, DigestInfo } ),
+  ?assertMatch( { ok, DigestType, _ }, DeserializedResult ),
+  { ok, DigestType, CustomDigest } = DeserializedResult,
+  ?assertMatch( { DigestType, _ }, CustomDigest ),
+
   ok.

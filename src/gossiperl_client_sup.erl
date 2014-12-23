@@ -29,7 +29,8 @@
           subscriptions/1,
           subscribe/2,
           unsubscribe/2,
-          send/3 ]).
+          send/3,
+          read/3 ]).
 
 -include("records.hrl").
 
@@ -128,34 +129,23 @@ unsubscribe(OverlayName, EventTypes) when is_binary(OverlayName) andalso is_list
       { error, Reason }
   end.
 
-%% @doc Unsubscribe from one or more event types.
+%% @doc Send a custom digest to the overlay.
 -spec send( binary(), atom(), [ { atom(), term(), atom(), non_neg_integer() } ] ) -> { ok, binary() } | { error, term() }.
 send(OverlayName, DigestType, DigestData) when is_binary(OverlayName) andalso is_atom(DigestType) ->
   case gossiperl_client_configuration:for_overlay( OverlayName ) of
     { ok, { _, Config } } ->
-      { StructInfo, RecordTuple } = get_digest_record_from_data(DigestType, DigestData),
       DigestId = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
-      gen_server:cast( ?MESSAGING(Config), { send_digest, DigestType, eval_string(RecordTuple), StructInfo, DigestId } ),
-      { ok, DigestId };
+      case gen_server:call( ?MESSAGING(Config), { send_digest, DigestType, DigestData, DigestId } ) of
+        ok ->
+          { ok, DigestId };
+        { error, SerializerErrorReason } ->
+          { error, SerializerErrorReason }
+      end;
     { error, Reason } ->
       { error, Reason }
   end.
 
-get_digest_record_from_data( DigestType, DigestData ) ->
-  { BinaryRecord, StructInfo } = get_for_thrift( DigestData ),
-  RecordDef = iolist_to_binary(io_lib:format("{~p", [ DigestType ])),
-  { StructInfo, binary_to_list(<<RecordDef/binary, BinaryRecord/binary, "}.">>) }.
-
-get_for_thrift( DigestData ) ->
-  lists:foldl(fun([ { _Name, Value , DataType, Order } ], { BinaryData, { struct, StructInfo } }) ->
-    FormattedValue = iolist_to_binary( io_lib:format(",~p", [ Value ] ) ),
-    NewBinary = <<BinaryData/binary, FormattedValue/binary>>,
-    NewStructInfo = ( StructInfo ++ [ { Order, list_to_atom(binary_to_list(DataType)) } ] ),
-    { NewBinary, NewStructInfo }
-  end, { [], { struct, [] } }, DigestData).
-
-eval_string(S) ->
-    {ok,Scanned,_} = erl_scan:string(S),
-    {ok,Parsed} = erl_parse:parse_exprs(Scanned),
-    {value, Value, _NewBindings} = erl_eval:exprs(Parsed,[]),
-    Value.
+%% @doc Read custom digest, most likely received as a forwarded message.
+-spec read( binary(), atom(), [ { non_neg_integer(), atom() } ] ) -> { ok, atom(), tuple() } | { error, term() }.
+read(DigestType, BinaryEnvelope, DigestInfo) when is_binary(BinaryEnvelope) andalso is_atom(DigestType) andalso is_list(DigestInfo) ->
+  gen_server:call( gossiperl_client_serialization, { deserialize, DigestType, BinaryEnvelope, DigestInfo } ).
