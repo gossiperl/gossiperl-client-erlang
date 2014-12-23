@@ -62,18 +62,6 @@ handle_cast({ send_digest, DigestType, Digest }, { messaging, Config }) ->
     EncryptedDigest ),
   {noreply, {messaging, Config}};
 
-%% @doc Send given digest out.
-handle_cast({ send_digest, DigestType, Digest, StructInfo, DigestId }, { messaging, Config }) ->
-  { ok, DigestType, SerializedDigest } = gen_server:call( gossiperl_client_serialization,
-                                                          { serialize, DigestType, Digest, StructInfo, DigestId } ),
-  { ok, EncryptedDigest } = gen_server:call( ?ENCRYPTION(Config), { maybe_encrypt, SerializedDigest } ),
-  gen_udp:send(
-    Config#clientConfig.socket,
-    {127,0,0,1},
-    Config#clientConfig.overlay_port,
-    EncryptedDigest ),
-  {noreply, {messaging, Config}};
-
 %% OUTGOING DIGESTS
 
 %% @doc Send a digest out.
@@ -210,6 +198,18 @@ handle_info({udp, _ClientSocket, _ClientIp, _ClientPort, Msg}, {messaging, Confi
       gossiperl_client_log:warn("[~p] Message could not be decrypted. Reason: ~p.", [ Config#clientConfig.name, Reason ])
   end,
   {noreply, {messaging, Config}}.
+
+%% @doc Send given digest out.
+handle_call({ send_digest, DigestType, DigestData, DigestId }, From, { messaging, Config }) ->
+  case gen_server:call( gossiperl_client_serialization,
+                        { serialize_arbitrary, DigestType, DigestData, DigestId } ) of
+    { ok, digestEnvelope, SerializedDigest } ->
+      gen_server:cast( ?MESSAGING(Config), { send_digest, digestEnvelope, SerializedDigest } ),
+      gen_server:reply( From, ok );
+    { error, Reason } ->
+      gen_server:reply( From, { error, Reason } )
+  end,
+  {noreply, {messaging, Config}};
 
 %% @doc Send digestExit out synchronously.
 handle_call({ digestExit }, From, { messaging, Config }) ->
