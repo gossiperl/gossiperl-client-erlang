@@ -1,13 +1,13 @@
 # Erlang gossiperl client
 
-This is a **very early** version of the Erlang [gossiperl](https://github.com/radekg/gossiperl) client library.
+This is an Erlang [gossiperl](http://gossiperl.com) client library.
 
 ## Installation
 
 Add this to `rebar.config` file:
 
     {gossiperl_client, ".*",
-      {git, "https://github.com/radekg/gossiperl-client-erlang.git", "master"}},
+      {git, "https://github.com/gossiperl/gossiperl-client-erlang.git", "master"}},
 
 Run `rebar get-deps`, the application should be installed.
 
