@@ -110,6 +110,5 @@ custom_serialization() ->
   DeserializedResult = gen_server:call( gossiperl_client_serialization, { deserialize, DigestType, BinaryEnvelope, DigestInfo } ),
   ?assertMatch( { ok, DigestType, _ }, DeserializedResult ),
   { ok, DigestType, CustomDigest } = DeserializedResult,
-  ?assertMatch( { DigestType, _ }, CustomDigest ),
-
+  ?assertMatch( { <<"some data to send">>, 1234 }, CustomDigest ),
   ok.
