@@ -5,14 +5,11 @@ otp_release:
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install curl jq screen
-  - sudo chmod -R 0775 /var/run/screen
-  - mkdir .gossiperl-daemon
-  - cd .gossiperl-daemon
-  - git clone --depth=50 --branch=master https://github.com/gossiperl/gossiperl.git .
-  - cd ..
-  - chmod +x .gossiperl-daemon/test/run-for-unit-tests.sh
-  - ./.gossiperl-daemon/test/run-for-unit-tests.sh
+  - sudo apt-get install wget curl jq
+  - wget https://s3-eu-west-1.amazonaws.com/gossiperl-cdn/gossiperl-1.0.0_all.deb
+  - sudo dpkg -i gossiperl-1.0.0_all.deb
+  - sudo /etc/gossiperl/start-and-wait.sh
+  - sudo /etc/gossiperl/test-overlay.sh
 
 sudo: true
 
