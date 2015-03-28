@@ -52,7 +52,7 @@ init([]) ->
 %% CONNECTIVITY
 
 %% @doc Connect to an overlay with listener.
--spec connect( [ { configuration_option(), term() } ] ) -> { ok, pid() } | { error, term() }.
+-spec connect( [ { gossiperl_client_configuration:configuration_option(), term() } ] ) -> { ok, pid() } | { error, term() }.
 connect( Options ) when is_list( Options ) ->
   case gossiperl_client_configuration:configure( Options ) of
     { ok, PreparedConfig } ->

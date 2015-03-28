@@ -24,6 +24,14 @@
 
 -export([configure/1, client_socket/2, for_overlay/1, remove_configuration/1]).
 
+-type client_config() :: #clientConfig{}.
+-type configuration_option() :: overlay_name | overlay_port | client_name | client_port | client_secret | symmetric_key | listener.
+-type configuration_validation_error() :: option_missing | needs_binary | needs_integer.
+
+-export_type([ client_config/0,
+               configuration_option/0,
+               configuration_validation_error/0 ]).
+
 %% @doc Prepare configuration from given details.
 -spec configure( [ { configuration_option(), term() } ] ) -> { ok, client_config() } | { error, { configuration_validation_error(), term() } }.
 configure( Options ) when is_list( Options ) ->
