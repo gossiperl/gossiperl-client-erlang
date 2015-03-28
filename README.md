@@ -120,7 +120,7 @@ Where:
 
 ## Running tests
 
-    ./rebar clean get-deps compile eunit
+    rebar clean get-deps compile && rebar eunit skip_deps=true
 
 Tests assume an overlay with the details specified in the `test/gossiperl_client_test.erl` running.
 

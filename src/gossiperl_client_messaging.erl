@@ -35,7 +35,7 @@ start_link(Config) ->
 stop() -> gen_server:cast(?MODULE, stop).
 
 %% @doc Initializes messaging module.
--spec init( [ client_config() ] ) -> { ok, { messaging, client_config() } } | { error, term() }.
+-spec init( [ gossiperl_client_configuration:client_config() ] ) -> { ok, { messaging, gossiperl_client_configuration:client_config() } } | { error, term() }.
 init([Config]) ->
   gossiperl_client_log:info("[~p] Attempting to start a client server at ~p.", [Config#clientConfig.name, Config#clientConfig.port]),
   case gen_udp:open(Config#clientConfig.port, [ binary,
