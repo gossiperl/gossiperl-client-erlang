@@ -20,7 +20,7 @@
 
 {application, gossiperl_client,
   [{description, "Erlang gossiperl client"},
-  {vsn, "0.10"},
+  {vsn, "1.0.0"},
   {modules, [gossiperl_client_app,
               gossiperl_client_common,
               gossiperl_client_configuration,
