@@ -35,7 +35,7 @@ start_link(Config) ->
 stop() -> gen_server:cast(?MODULE, stop).
 
 %% @doc Initializes encryption module.
--spec init( [ client_config() ] ) -> { ok, { encryption, client_config() } }.
+-spec init( [ gossiperl_client_configuration:client_config() ] ) -> { ok, { encryption, gossiperl_client_configuration:client_config() } }.
 init([Config]) ->
   {ok, {encryption, Config#clientConfig{ symmetric_key = erlsha2:sha256(Config#clientConfig.symmetric_key) }}}.
 

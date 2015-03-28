@@ -21,7 +21,7 @@
 -ifndef(_gossiperl_client_records_included).
 -define(_gossiperl_client_records_included, yeah).
 
--include("gossiperl_types.hrl").
+-include_lib("gossiperl_core/include/gossiperl_types.hrl").
 
 -record(clientNames, {
           client :: atom(),
@@ -40,12 +40,6 @@
           names :: #clientNames{},
           listener :: pid(),
           thrift_window_size :: integer() }).
-
--type client_config() :: #clientConfig{}.
--type configuration_option() :: overlay_name | overlay_port | client_name | client_port | client_secret | symmetric_key | listener.
--type configuration_validation_error() :: option_missing | needs_binary | needs_integer.
--type listener() :: pid() | undefined.
--type timestamp() :: {MegaSecs :: non_neg_integer(), Secs :: non_neg_integer(), MicroSecs :: non_neg_integer()}.
 
 -define(CONFIG_ETS, ets_gossiperl_client_configuration).
 -define(AES_PAD(Bin), <<Bin/binary, 0:(( 32 - ( byte_size(Bin) rem 32 ) ) *8 )>>).
