@@ -38,7 +38,7 @@
           overlay_port :: integer(),
           socket :: pid(),
           names :: #clientNames{},
-          listener :: pid(),
+          listener :: atom(),
           thrift_window_size :: integer() }).
 
 -define(CONFIG_ETS, ets_gossiperl_client_configuration).

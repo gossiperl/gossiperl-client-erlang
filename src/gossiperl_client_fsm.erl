@@ -38,7 +38,7 @@ start_link(Config) ->
 
 %% @doc Initializes client FSM.
 init([Config]) ->
-  gossiperl_client_log:info("[~p] FSM running.", [Config#clientConfig.name]),
+  gossiperl_log:info("[~p] FSM running.", [Config#clientConfig.name]),
   { ok, contact_overlay,
     {gossiperl_client, #state{ config=Config, last_ack=gossiperl_client_common:get_timestamp() }},
     500 }.
@@ -106,10 +106,7 @@ handle_sync_event({unsubscribe, EventTypes}, From, State,
 
 handle_sync_event({digestAck}, From, disconnected,
   {gossiperl_client, S=#state{ config=Config, subscriptions=Subscriptions }}) ->
-  case is_pid( Config#clientConfig.listener ) of
-    true  -> Config#clientConfig.listener ! { event, connected, Config#clientConfig.overlay, Subscriptions };
-    false -> gossiperl_client_log:info("[EVENT] Connected: ~p, ~p.", [Config#clientConfig.overlay, Subscriptions])
-  end,
+  (Config#clientConfig.listener):connected( Config#clientConfig.overlay, Subscriptions ),
   subscription_action(digestSubscribe, Config, Subscriptions),
   gen_fsm:reply(From, ok),
   { next_state, operational, {gossiperl_client, S#state{ last_ack=gossiperl_client_common:get_timestamp() }}, 2000 };
@@ -137,10 +134,7 @@ operational(timeout, {gossiperl_client, S=#state{ config=Config, last_ack=LastAc
   end.
 
 disconnected(_, {gossiperl_client, S=#state{ config=Config }}) ->
-  case is_pid( Config#clientConfig.listener ) of
-    true  -> Config#clientConfig.listener ! { event, disconnected, Config#clientConfig.overlay };
-    false -> gossiperl_client_log:info("[EVENT] Disconnected: ~p.", [Config#clientConfig.overlay])
-  end,
+  (Config#clientConfig.listener):disconnected( Config#clientConfig.overlay ),
   { next_state, contact_overlay, {gossiperl_client, S}, 2500 }.
 
 subscription_action(Action, _Config, []) when is_atom(Action) ->
