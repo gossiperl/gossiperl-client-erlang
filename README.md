@@ -36,9 +36,9 @@ To connect a client to an overlay:
               { client_port, ClientPort },
               { client_secret, <<"client-secret">> },
               { symmetric_key, <<"symmetric-key">> },
-              { listener, ListenerPid } ] ).
+              { listener, ModuleName } ] ).
 
-`listener` option is optional.
+Listener is a module implementing a `gossiperl_client_listener` behaviour. This behaviour can be found in [`gossiperl-core-erlang`](https://github.com/gossiperl/gossiperl-core-erlang/blob/master/src/gossiperl_client_listener.erl). Listener setting is optional. If not given, a default implementation will be used.
 
 A client may be connected to multiple overlays.
 

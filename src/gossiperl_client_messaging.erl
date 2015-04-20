@@ -37,16 +37,16 @@ stop() -> gen_server:cast(?MODULE, stop).
 %% @doc Initializes messaging module.
 -spec init( [ gossiperl_client_configuration:client_config() ] ) -> { ok, { messaging, gossiperl_client_configuration:client_config() } } | { error, term() }.
 init([Config]) ->
-  gossiperl_client_log:info("[~p] Attempting to start a client server at ~p.", [Config#clientConfig.name, Config#clientConfig.port]),
+  gossiperl_log:info("[~p] Attempting to start a client server at ~p.", [Config#clientConfig.name, Config#clientConfig.port]),
   case gen_udp:open(Config#clientConfig.port, [ binary,
                                                 {ip, {127,0,0,1}},
                                                 {recbuf, Config#clientConfig.thrift_window_size},
                                                 {sndbuf, Config#clientConfig.thrift_window_size} ]) of
     {ok, Socket} ->
-      gossiperl_client_log:info("[~p] Client server listening with config ~p.", [Config#clientConfig.name, Config]),
+      gossiperl_log:info("[~p] Client server listening with config ~p.", [Config#clientConfig.name, Config]),
       {ok, {messaging, gossiperl_client_configuration:client_socket( Socket, Config ) }};
     {error, Reason} ->
-      gossiperl_client_log:info("[~p] Error while starting client server. Reason: ~p.", [Config#clientConfig.name, Reason]),
+      gossiperl_log:info("[~p] Error while starting client server. Reason: ~p.", [Config#clientConfig.name, Reason]),
       {error, Reason}
   end.
 
@@ -116,57 +116,42 @@ handle_cast({ digestAck, _DecodedPayload }, { messaging, Config }) ->
 
 %% @doc Hanlde incoming digestSubscribeAck.
 handle_cast({ digestSubscribeAck, DecodedPayload }, { messaging, Config }) ->
-  case is_pid( Config#clientConfig.listener ) of
-    true  -> Config#clientConfig.listener ! { subscribed, { Config#clientConfig.overlay,
-                                              DecodedPayload#digestSubscribeAck.event_types,
-                                              DecodedPayload#digestSubscribeAck.heartbeat } };
-    false -> gossiperl_client_log:info("[EVENT] Subscribed: ~p", [DecodedPayload])
-  end,
+  ( Config#clientConfig.listener ):subscribed( Config#clientConfig.overlay,
+                                               DecodedPayload#digestSubscribeAck.event_types,
+                                               DecodedPayload#digestSubscribeAck.heartbeat ),
   {noreply, {messaging, Config}};
 
 %% @doc Hanlde incoming digestUnsubscribeAck.
 handle_cast({ digestUnsubscribeAck, DecodedPayload }, { messaging, Config }) ->
-  case is_pid( Config#clientConfig.listener ) of
-    true  -> Config#clientConfig.listener ! { unsubscribed, { Config#clientConfig.overlay,
-                                              DecodedPayload#digestUnsubscribeAck.event_types,
-                                              DecodedPayload#digestUnsubscribeAck.heartbeat } };
-    false -> gossiperl_client_log:info("[EVENT] Unsubscribed: ~p", [DecodedPayload])
-  end,
+  (Config#clientConfig.listener):unsubscribed( Config#clientConfig.overlay,
+                                               DecodedPayload#digestUnsubscribeAck.event_types,
+                                               DecodedPayload#digestUnsubscribeAck.heartbeat ),
   {noreply, {messaging, Config}};
 
 
 %% @doc Hanlde incoming digestEvent.
 handle_cast({ digestEvent, DecodedPayload }, { messaging, Config }) ->
-  case is_pid( Config#clientConfig.listener ) of
-    true  -> Config#clientConfig.listener ! { event, { Config#clientConfig.overlay,
-                                              DecodedPayload#digestEvent.event_type,
-                                              DecodedPayload#digestEvent.event_object,
-                                              DecodedPayload#digestEvent.heartbeat } };
-    false -> gossiperl_client_log:info("[EVENT] Event: ~p", [DecodedPayload])
-  end,
+  (Config#clientConfig.listener):event( Config#clientConfig.overlay,
+                                        DecodedPayload#digestEvent.event_type,
+                                        DecodedPayload#digestEvent.event_object,
+                                        DecodedPayload#digestEvent.heartbeat ),
   {noreply, {messaging, Config}};
 
 %% @doc Hanlde incoming digestForwardedAck.
 handle_cast({ digestForwardedAck, DecodedPayload }, { messaging, Config }) ->
-  case is_pid( Config#clientConfig.listener ) of
-    true  -> Config#clientConfig.listener ! { forwarded_ack, { Config#clientConfig.overlay,
+  (Config#clientConfig.listener):forward_ack( Config#clientConfig.overlay,
                                               DecodedPayload#digestForwardedAck.name,
-                                              DecodedPayload#digestForwardedAck.reply_id } };
-    false -> gossiperl_client_log:info("[EVENT] Forwarded ack: ~p", [DecodedPayload])
-  end,
+                                              DecodedPayload#digestForwardedAck.reply_id ),
   {noreply, {messaging, Config}};
 
 %% FORWARDABLES:
 
 %% @doc Hanlde forwarded digest.
 handle_cast({ forwardable, UnsupportedDigestType, DigestEnvelopeBin, DigestId }, {messaging, Config}) ->
-  case is_pid( Config#clientConfig.listener ) of
-    true  -> Config#clientConfig.listener ! { forwarded, { Config#clientConfig.overlay,
-                                                           UnsupportedDigestType,
-                                                           DigestEnvelopeBin,
-                                                           DigestId } };
-    false -> gossiperl_client_log:info("[EVENT] Forwarded: ~p", [UnsupportedDigestType])
-  end,
+  ( Config#clientConfig.listener ):forward( Config#clientConfig.overlay,
+                                            UnsupportedDigestType,
+                                            DigestEnvelopeBin,
+                                            DigestId ),
   gen_server:cast( ?MESSAGING(Config), { send_digest,
                                          digestForwardedAck,
                                          #digestForwardedAck{
@@ -189,13 +174,10 @@ handle_info({udp, _ClientSocket, _ClientIp, _ClientPort, Msg}, {messaging, Confi
         { forwardable, UnsupportedDigestType, DigestEnvelopeBin, DigestId } ->
           gen_server:cast( ?MESSAGING(Config), { forwardable, UnsupportedDigestType, DigestEnvelopeBin, DigestId } );
         {error, Reason} ->
-          case is_pid( Config#clientConfig.listener ) of
-            true  -> Config#clientConfig.listener ! { failed, { Config#clientConfig.overlay, Reason } };
-            false -> gossiperl_client_log:err("[EVENT] Failed: ~p", [Reason])
-          end
+          (Config#clientConfig.listener):failed( Config#clientConfig.overlay, Reason )
       end;
     { error, Reason } ->
-      gossiperl_client_log:warn("[~p] Message could not be decrypted. Reason: ~p.", [ Config#clientConfig.name, Reason ])
+      gossiperl_log:warn("[~p] Message could not be decrypted. Reason: ~p.", [ Config#clientConfig.name, Reason ])
   end,
   {noreply, {messaging, Config}}.
 

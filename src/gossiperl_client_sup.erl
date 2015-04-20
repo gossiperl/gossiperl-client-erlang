@@ -39,7 +39,7 @@ start_link() ->
 
 init([]) ->
   ets:new(?CONFIG_ETS, [set, named_table, public]),
-  gossiperl_client_log:info("Gossiperl client application running."),
+  gossiperl_log:info("Gossiperl client application running."),
   {ok, {{one_for_all, 10, 10}, [{
     gossiperl_client_serialization,
     {gossiperl_client_serialization, start_link, []},

@@ -67,8 +67,8 @@ configure( Options ) when is_list( Options ) ->
                   fsm        = list_to_atom(binary_to_list(<<"fsm_", OverlayName/binary>>)),
                   messaging  = list_to_atom(binary_to_list(<<"messaging_", OverlayName/binary>>)),
                   encryption = list_to_atom(binary_to_list(<<"encryption_", OverlayName/binary>>)) },
-                listener = get_option_with_default( listener, Options, undefined ),
-                thrift_window_size = get_option_with_default( thrift_window_size, Options, 16777216 ) },
+                listener = proplists:get_value( listener, Options, gossiperl_client_listener ),
+                thrift_window_size = proplists:get_value( thrift_window_size, Options, 16777216 ) },
               { ok, store_config( PreparedConfig ) };
             { error, { needs_integer, Option } } ->
               { error, { needs_integer, Option } }
@@ -167,29 +167,3 @@ validate_integer( Options ) when is_list(Options) ->
         { error, Reason }
     end
   end, ok, Options).
-
-get_option_with_default(listener, Options, Default) ->
-  case lists:keyfind(listener, 1, Options) of
-    false ->
-      Default;
-    { listener, Value } ->
-      case is_pid(Value) of
-        true ->
-          Value;
-        false ->
-          Default
-      end
-  end;
-
-get_option_with_default(thrift_window_size, Options, Default) ->
-  case lists:keyfind(thrift_window_size, 1, Options) of
-    false ->
-      Default;
-    { thrift_window_size, Value } ->
-      case is_integer(Value) of
-        true ->
-          Value;
-        false ->
-          Default
-      end
-  end.
